@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Talisman Evasion Calculator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f9fafb;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .container {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      padding: 24px;
+      width: 100%;
+      max-width: 500px;
+    }
+    h1 {
+      font-size: 1.5em;
+      margin-bottom: 8px;
+    }
+    label {
+      display: block;
+      margin-top: 12px;
+      font-weight: bold;
+    }
+    input, select, button {
+      width: 100%;
+      padding: 8px;
+      margin-top: 6px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 1em;
+    }
+    button {
+      background: #2563eb;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #1d4ed8;
+    }
+    .result {
+      background: #f3f4f6;
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 16px;
+      text-align: center;
+    }
+    .small {
+      font-size: 0.85em;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Talisman Evasion Calculator</h1>
+    <p class="small">Compute total evasion chance or how many talismans you need.</p>
+
+    <label>Per-talisman evasion (%)</label>
+    <input type="number" id="perEvasion" value="18" step="0.01" min="0" max="100" />
+
+    <label>Mode</label>
+    <select id="mode">
+      <option value="calcTotal">Calculate Total</option>
+      <option value="calcNeeded">How Many Needed?</option>
+    </select>
+
+    <div id="calcTotalFields">
+      <label>Number of talismans</label>
+      <input type="number" id="numTalismans" value="4" min="0" step="1" />
+    </div>
+
+    <div id="calcNeededFields" style="display:none">
+      <label>Desired total evasion (%)</label>
+      <input type="number" id="desiredTotal" value="55" step="0.01" min="0" max="99.999" />
+    </div>
+
+    <button id="calculateBtn">Calculate</button>
+
+    <div class="result" id="resultBox">Result will appear here.</div>
+
+    <p class="small">Formula: E_total = 100 × (1 - (1 - E/100)^n)</p>
+  </div>
+
+  <script>
+    const modeSelect = document.getElementById('mode');
+    const calcTotalFields = document.getElementById('calcTotalFields');
+    const calcNeededFields = document.getElementById('calcNeededFields');
+    const resultBox = document.getElementById('resultBox');
+
+    modeSelect.addEventListener('change', () => {
+      const mode = modeSelect.value;
+      if (mode === 'calcTotal') {
+        calcTotalFields.style.display = '';
+        calcNeededFields.style.display = 'none';
+      } else {
+        calcTotalFields.style.display = 'none';
+        calcNeededFields.style.display = '';
+      }
+      resultBox.textContent = 'Result will appear here.';
+    });
+
+    document.getElementById('calculateBtn').addEventListener('click', () => {
+      const E = parseFloat(document.getElementById('perEvasion').value) || 0;
+      const mode = modeSelect.value;
+      let result = '';
+
+      if (mode === 'calcTotal') {
+        const n = Math.max(0, Math.floor(parseFloat(document.getElementById('numTalismans').value) || 0));
+        const total = 100 * (1 - Math.pow(1 - E / 100, n));
+        result = `Total evasion chance: ${total.toFixed(2)}%`;
+      } else {
+        const desired = parseFloat(document.getElementById('desiredTotal').value) || 0;
+        if (E <= 0) {
+          result = 'Per-talisman evasion must be greater than 0%.';
+        } else if (desired >= 100) {
+          result = 'Desired evasion cannot be 100% or higher.';
+        } else {
+          const n = Math.ceil(Math.log(1 - desired / 100) / Math.log(1 - E / 100));
+          const checkTotal = 100 * (1 - Math.pow(1 - E / 100, n));
+          result = `You need about ${n} talisman(s) → Total evasion ≈ ${checkTotal.toFixed(2)}%`;
+        }
+      }
+
+      resultBox.textContent = result;
+    });
+  </script>
+</body>
+</html>
