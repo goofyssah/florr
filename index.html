@@ -7,71 +7,57 @@
 <style>
   :root{font-family:system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial;line-height:1.4}
   body{background:#f6f8fb;color:#0b1220;padding:28px;display:flex;justify-content:center}
-  .card{background:#fff;border-radius:12px;box-shadow:0 8px 30px rgba(11,18,32,0.08);max-width:920px;width:100%;padding:20px}
-  h1{margin:0 0 8px;font-size:20px}
+  .card{background:#fff;border-radius:12px;box-shadow:0 8px 30px rgba(11,18,32,0.08);max-width:900px;width:100%;padding:22px}
+  h1{margin:0 0 8px;font-size:22px}
   p.lead{margin:0 0 18px;color:#475569}
   table{width:100%;border-collapse:collapse;margin-bottom:10px}
   th,td{padding:8px 10px;text-align:left}
   th{font-size:13px;color:#334155}
   input[type="number"], select{width:100%;box-sizing:border-box;padding:8px;border:1px solid #e6e9ef;border-radius:8px;}
-  .row-actions{display:flex;gap:8px}
   button{cursor:pointer;border:0;padding:8px 10px;border-radius:8px;background:#0ea5a4;color:white}
   button.ghost{background:#eef2ff;color:#3730a3}
   button.danger{background:#ef4444}
+  .row-actions{display:flex;gap:8px}
   .results{background:#f8fafc;border-radius:8px;padding:12px;margin-top:12px;border:1px dashed #e6eef6}
   pre{background:#0b1220;color:#e6eef6;padding:12px;border-radius:8px;overflow:auto}
   .foot{margin-top:12px;color:#64748b;font-size:13px}
-  .small{font-size:13px;color:#475569}
-  .inline{display:inline-block;vertical-align:middle}
-  @media (max-width:640px){body{padding:12px}.card{padding:14px}}
 </style>
 </head>
 <body>
-  <main class="card" role="main" aria-labelledby="title">
-    <h1 id="title">Talisman Evasion Stack Calculator</h1>
-    <p class="lead">Select talisman rarity or enter evasion %. The calculator multiplies the *fail* chance (100% - evasion%) for each talisman, then converts it back to total evasion%.</p>
+<main class="card">
+  <h1>Talisman Evasion Stack Calculator</h1>
+  <p class="lead">Uses formula: <code>1 - ((1 - evasion%) ^ count)</code> for each rarity, then multiplies remaining hit chances between rarities.</p>
 
-    <table aria-label="talisman table">
-      <thead>
-        <tr>
-          <th style="width:40%;">Rarity / Name</th>
-          <th style="width:22%;">Evasion % (per talisman)</th>
-          <th style="width:18%;">Quantity</th>
-          <th style="width:20%;">Actions</th>
-        </tr>
-      </thead>
-      <tbody id="rows"></tbody>
-    </table>
+  <table>
+    <thead>
+      <tr><th>Rarity</th><th>Evasion %</th><th>Count</th><th>Actions</th></tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
 
-    <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
-      <button id="addRow">➕ Add talisman</button>
-      <button id="useExample" class="ghost">Use example (Mythic ×4)</button>
-      <button id="clearAll" class="danger">Clear all</button>
-      <div style="margin-left:auto" class="small inline">Precision:
-        <select id="precision" style="margin-left:8px;padding:6px;border-radius:6px;border:1px solid #e6e9ef">
-          <option value="2">2 dp</option>
-          <option value="3" selected>3 dp</option>
-          <option value="4">4 dp</option>
-        </select>
-      </div>
-    </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+    <button id="addRow">➕ Add</button>
+    <button id="example" class="ghost">Use example (Mythic ×4)</button>
+    <button id="clear" class="danger">Clear</button>
+  </div>
 
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button id="calculate">Calculate</button>
-      <button id="copyResult" class="ghost">Copy results</button>
-    </div>
+  <button id="calculate">Calculate</button>
 
-    <div id="output" class="results" aria-live="polite" style="display:none">
-      <div id="summary"></div>
-      <pre id="steps" style="margin-top:10px"></pre>
-    </div>
+  <div id="output" class="results" style="display:none">
+    <div id="summary"></div>
+    <pre id="steps"></pre>
+  </div>
 
-    <p class="foot">For each talisman: fail = 1 − (evasion / 100). Multiply all fails → hit chance. Final evasion = (1 − hit chance) × 100.</p>
-  </main>
+  <p class="foot">
+    Formula: <b>1 - ((1 - E)^N)</b> per rarity.  
+    For mixed rarities, total hit chance = product of all (1 - E_total_rarity).  
+    Final evasion = 1 - total_hit.
+  </p>
+</main>
 
 <script>
 (() => {
-  const rarityData = {
+  const rarityValues = {
     "Common": 3,
     "Unusual": 6,
     "Rare": 9,
@@ -83,129 +69,74 @@
     "Unique": 27
   };
 
-  const rowsEl = document.getElementById('rows');
-  const addRowBtn = document.getElementById('addRow');
-  const calculateBtn = document.getElementById('calculate');
-  const useExampleBtn = document.getElementById('useExample');
-  const clearAllBtn = document.getElementById('clearAll');
-  const output = document.getElementById('output');
-  const summary = document.getElementById('summary');
-  const steps = document.getElementById('steps');
-  const precisionSelect = document.getElementById('precision');
-  const copyBtn = document.getElementById('copyResult');
+  const rows = document.getElementById("rows");
+  const addBtn = document.getElementById("addRow");
+  const exampleBtn = document.getElementById("example");
+  const clearBtn = document.getElementById("clear");
+  const calcBtn = document.getElementById("calculate");
+  const output = document.getElementById("output");
+  const summary = document.getElementById("summary");
+  const steps = document.getElementById("steps");
 
-  function createRow(rarity = "Common", evasion = rarityData[rarity], qty = 1) {
-    const tr = document.createElement('tr');
-    const rarityOptions = Object.entries(rarityData)
-      .map(([r, val]) => `<option value="${r}" ${r === rarity ? 'selected' : ''}>${r} (+${val}%)</option>`)
-      .join('');
-
+  function createRow(rarity = "Common", count = 1) {
+    const tr = document.createElement("tr");
+    const opts = Object.entries(rarityValues)
+      .map(([r, val]) => `<option value="${r}" ${r===rarity?"selected":""}>${r} (+${val}%)</option>`)
+      .join("");
     tr.innerHTML = `
-      <td><select class="tname">${rarityOptions}</select></td>
-      <td><input type="number" class="tevasion" value="${evasion}" min="0" max="100" step="0.01"></td>
-      <td><input type="number" class="tqty" value="${qty}" min="0" step="1"></td>
-      <td class="row-actions"><button class="remove ghost">Remove</button></td>
+      <td><select class="rarity">${opts}</select></td>
+      <td><input type="number" class="evasion" min="0" max="100" value="${rarityValues[rarity]}" step="0.01"></td>
+      <td><input type="number" class="count" min="1" value="${count}"></td>
+      <td><button class="remove ghost">Remove</button></td>
     `;
+    rows.appendChild(tr);
 
-    rowsEl.appendChild(tr);
-
-    const select = tr.querySelector('.tname');
-    const evInput = tr.querySelector('.tevasion');
-
-    select.addEventListener('change', () => {
-      const val = rarityData[select.value];
-      if (val !== undefined) evInput.value = val;
+    tr.querySelector(".remove").addEventListener("click", ()=>tr.remove());
+    tr.querySelector(".rarity").addEventListener("change", e=>{
+      tr.querySelector(".evasion").value = rarityValues[e.target.value];
     });
-
-    tr.querySelector('.remove').addEventListener('click', () => tr.remove());
-    tr.querySelectorAll('input,select').forEach(inp => {
-      inp.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') calculate();
-      });
-    });
-
-    return tr;
   }
 
-  createRow("Mythic", 18, 4);
+  createRow("Mythic",4);
 
-  addRowBtn.addEventListener('click', () => createRow());
-  useExampleBtn.addEventListener('click', () => {
-    rowsEl.innerHTML = '';
-    createRow("Mythic", 18, 4);
-  });
-  clearAllBtn.addEventListener('click', () => {
-    rowsEl.innerHTML = '';
-    output.style.display = 'none';
-  });
+  addBtn.onclick = ()=>createRow();
+  exampleBtn.onclick = ()=>{
+    rows.innerHTML="";
+    createRow("Mythic",4);
+  };
+  clearBtn.onclick = ()=>{
+    rows.innerHTML="";
+    output.style.display="none";
+  };
 
-  calculateBtn.addEventListener('click', calculate);
-  copyBtn.addEventListener('click', copyResults);
+  calcBtn.onclick = ()=>{
+    const data = Array.from(rows.querySelectorAll("tr")).map(r=>{
+      return {
+        rarity: r.querySelector(".rarity").value,
+        ev: parseFloat(r.querySelector(".evasion").value)/100,
+        count: parseInt(r.querySelector(".count").value)
+      };
+    }).filter(x=>x.count>0);
 
-  function gatherInputs() {
-    const rows = Array.from(rowsEl.querySelectorAll('tr'));
-    const items = [];
-    for (const r of rows) {
-      const rarity = r.querySelector('.tname').value;
-      const ev = parseFloat(r.querySelector('.tevasion').value);
-      const qty = Math.floor(parseFloat(r.querySelector('.tqty').value) || 0);
-      if (isNaN(ev) || ev < 0 || ev > 100) throw new Error(`${rarity}: evasion must be between 0–100.`);
-      if (qty <= 0) continue;
-      items.push({ name: rarity, evasionPercent: ev, qty });
+    if(!data.length) return alert("Add at least one talisman.");
+
+    let totalHitChance = 1;
+    const logs = [];
+
+    for(const t of data){
+      const indivEvasion = 1 - Math.pow(1 - t.ev, t.count);  // ← your formula
+      const indivHit = 1 - indivEvasion;
+      logs.push(`${t.rarity}: 1 - ((1 - ${t.ev.toFixed(4)}) ^ ${t.count}) = ${(indivEvasion*100).toFixed(3)}%`);
+      totalHitChance *= indivHit;
     }
-    if (!items.length) throw new Error("No talismans with quantity > 0.");
-    return items;
-  }
 
-  function calculate() {
-    try {
-      const items = gatherInputs();
-      const prec = parseInt(precisionSelect.value, 10);
-      let productFail = 1.0;
-      const stepParts = [];
+    const totalEvasion = 1 - totalHitChance;
 
-      for (const it of items) {
-        const fail = 1 - it.evasionPercent / 100;
-        const combinedFail = Math.pow(fail, it.qty);
-        productFail *= combinedFail;
-        stepParts.push(`${it.name} (${it.evasionPercent}%) → fail=${format(fail, prec)}^${it.qty}=${format(combinedFail, prec)}`);
-      }
-
-      const hitChance = productFail;
-      const evasion = 1 - hitChance;
-      const lines = [];
-      lines.push("Steps:");
-      stepParts.forEach(p => lines.push(" - " + p));
-      lines.push("");
-      lines.push(`Final hit chance = ${format(hitChance * 100, prec)}%`);
-      lines.push(`Final evasion chance = ${format(evasion * 100, prec)}%`);
-
-      summary.innerHTML = `<strong>Result:</strong> Evasion = <strong>${format(evasion * 100, prec)}%</strong> (Hit = ${format(hitChance * 100, prec)}%)`;
-      steps.textContent = lines.join('\n');
-      output.style.display = "block";
-    } catch (err) {
-      output.style.display = "block";
-      summary.innerHTML = `<strong style="color:#b91c1c">Error:</strong> ${err.message}`;
-      steps.textContent = "";
-    }
-  }
-
-  function format(n, dp) {
-    return Number(n).toLocaleString(undefined, { maximumFractionDigits: dp });
-  }
-
-  function copyResults() {
-    if (output.style.display === "none") { alert("No results yet."); return; }
-    const text = summary.innerText + "\n\n" + steps.innerText;
-    navigator.clipboard.writeText(text).then(() => {
-      copyBtn.textContent = "Copied ✓";
-      setTimeout(() => (copyBtn.textContent = "Copy results"), 1200);
-    });
-  }
-
-  document.addEventListener("keydown", e => {
-    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") calculate();
-  });
+    summary.innerHTML = `<strong>Total Evasion:</strong> ${(totalEvasion*100).toFixed(3)}%<br>
+                         <strong>Total Hit Chance:</strong> ${(totalHitChance*100).toFixed(3)}%`;
+    steps.textContent = logs.join("\n");
+    output.style.display="block";
+  };
 })();
 </script>
 </body>
