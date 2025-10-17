@@ -1,143 +1,124 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Talisman Evasion Calculator</title>
-<style>
-  :root{font-family:system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial;line-height:1.4}
-  body{background:#f6f8fb;color:#0b1220;padding:28px;display:flex;justify-content:center}
-  .card{background:#fff;border-radius:12px;box-shadow:0 8px 30px rgba(11,18,32,0.08);max-width:900px;width:100%;padding:22px}
-  h1{margin:0 0 8px;font-size:22px}
-  p.lead{margin:0 0 18px;color:#475569}
-  table{width:100%;border-collapse:collapse;margin-bottom:10px}
-  th,td{padding:8px 10px;text-align:left}
-  th{font-size:13px;color:#334155}
-  input[type="number"], select{width:100%;box-sizing:border-box;padding:8px;border:1px solid #e6e9ef;border-radius:8px;}
-  button{cursor:pointer;border:0;padding:8px 10px;border-radius:8px;background:#0ea5a4;color:white}
-  button.ghost{background:#eef2ff;color:#3730a3}
-  button.danger{background:#ef4444}
-  .row-actions{display:flex;gap:8px}
-  .results{background:#f8fafc;border-radius:8px;padding:12px;margin-top:12px;border:1px dashed #e6eef6}
-  pre{background:#0b1220;color:#e6eef6;padding:12px;border-radius:8px;overflow:auto}
-  .foot{margin-top:12px;color:#64748b;font-size:13px}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Talisman Evasion Calculator</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--muted:#94a3b8;--accent:#7c3aed}
+    body{font-family:Inter,ui-sans-serif,system-ui,Arial;background:linear-gradient(180deg,#071023 0%, #081126 100%);color:#e6eef8;margin:0;padding:28px;}
+    .wrap{max-width:880px;margin:0 auto}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.03);padding:18px;border-radius:12px;box-shadow:0 6px 24px rgba(2,6,23,0.6)}
+    h1{margin:0 0 8px 0;font-size:20px}
+    p.lead{margin:0 0 16px 0;color:var(--muted)}
+    .muted{color:var(--muted)}
+    .rarity-btn{background:#0b1630;border:1px solid rgba(255,255,255,0.025);padding:6px 8px;border-radius:8px;cursor:pointer}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{padding:8px;border-bottom:1px solid rgba(255,255,255,0.02);text-align:left}
+    .result{font-size:18px;margin-top:12px}
+    .small{font-size:12px;color:var(--muted)}
+    .right{margin-left:auto}
+    input[type=number], input[type=text]{background:#071226;border:1px solid rgba(255,255,255,0.03);color:inherit;padding:8px 10px;border-radius:8px;min-width:120px}
+    button{background:var(--accent);border:0;padding:8px 12px;border-radius:9px;color:white;cursor:pointer}
+  </style>
 </head>
 <body>
-<main class="card">
-  <h1>Talisman Evasion Stack Calculator</h1>
-  <p class="lead">Uses formula: <code>1 - ((1 - evasion%) ^ count)</code> for each rarity, then multiplies remaining hit chances between rarities.</p>
+  <div class="wrap">
+    <div class="card">
+      <h1>Talisman Evasion Calculator</h1>
+      <p class="lead">Add talismans of different rarities to calculate total stacked evasion. Percent values for rarities are included below.</p>
 
-  <table>
-    <thead>
-      <tr><th>Rarity</th><th>Evasion %</th><th>Count</th><th>Actions</th></tr>
-    </thead>
-    <tbody id="rows"></tbody>
-  </table>
+      <div>
+        <div class="small muted">Click a rarity to add one talisman of that rarity to your list.</div>
+        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="rarity-btn" data-pct="3">Common +3%</button>
+          <button class="rarity-btn" data-pct="6">Unusual +6%</button>
+          <button class="rarity-btn" data-pct="9">Rare +9%</button>
+          <button class="rarity-btn" data-pct="12">Epic +12%</button>
+          <button class="rarity-btn" data-pct="15">Legendary +15%</button>
+          <button class="rarity-btn" data-pct="18">Mythic +18%</button>
+          <button class="rarity-btn" data-pct="21">Ultra +21%</button>
+          <button class="rarity-btn" data-pct="24">Super +24%</button>
+          <button class="rarity-btn" data-pct="27">Unique +27%</button>
+        </div>
 
-  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-    <button id="addRow">➕ Add</button>
-    <button id="example" class="ghost">Use example (Mythic ×4)</button>
-    <button id="clear" class="danger">Clear</button>
+        <div style="margin-top:12px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <label class="small muted">Custom name:</label>
+            <input id="customName" type="text" placeholder="e.g. Crafted Talisman" />
+            <label class="small muted">Custom percent:</label>
+            <input id="customPct" type="number" min="0" max="100" step="0.01" placeholder="%" />
+            <button id="addCustom">Add</button>
+          </div>
+
+          <table id="talismanTable">
+            <thead><tr><th>#</th><th>Name</th><th>Percent</th><th>Decimal</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+
+          <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+            <button id="calcList">Calculate stacked evasion</button>
+            <button id="clearList">Clear list</button>
+            <div class="right small muted">Uses formula: 1 - Π (1 - pᵢ)</div>
+          </div>
+
+          <div id="listResult" class="result"></div>
+        </div>
+      </div>
+
+      <hr style="margin:14px 0;border:none;border-top:1px solid rgba(255,255,255,0.02)" />
+
+      <div class="small muted">Formula: <code>1 - Π (1 - pᵢ)</code> where each <code>pᵢ</code> is the evasion chance of a talisman.</div>
+    </div>
   </div>
 
-  <button id="calculate">Calculate</button>
+  <script>
+    const toDec = p => Math.max(0, Math.min(1, Number(p) / 100 || 0));
+    const pct = x => (x*100).toFixed(4) + '%';
 
-  <div id="output" class="results" style="display:none">
-    <div id="summary"></div>
-    <pre id="steps"></pre>
-  </div>
+    const tableBody = document.querySelector('#talismanTable tbody');
+    let talismans = [];
 
-  <p class="foot">
-    Formula: <b>1 - ((1 - E)^N)</b> per rarity.  
-    For mixed rarities, total hit chance = product of all (1 - E_total_rarity).  
-    Final evasion = 1 - total_hit.
-  </p>
-</main>
-
-<script>
-(() => {
-  const rarityValues = {
-    "Common": 3,
-    "Unusual": 6,
-    "Rare": 9,
-    "Epic": 12,
-    "Legendary": 15,
-    "Mythic": 18,
-    "Ultra": 21,
-    "Super": 24,
-    "Unique": 27
-  };
-
-  const rows = document.getElementById("rows");
-  const addBtn = document.getElementById("addRow");
-  const exampleBtn = document.getElementById("example");
-  const clearBtn = document.getElementById("clear");
-  const calcBtn = document.getElementById("calculate");
-  const output = document.getElementById("output");
-  const summary = document.getElementById("summary");
-  const steps = document.getElementById("steps");
-
-  function createRow(rarity = "Common", count = 1) {
-    const tr = document.createElement("tr");
-    const opts = Object.entries(rarityValues)
-      .map(([r, val]) => `<option value="${r}" ${r===rarity?"selected":""}>${r} (+${val}%)</option>`)
-      .join("");
-    tr.innerHTML = `
-      <td><select class="rarity">${opts}</select></td>
-      <td><input type="number" class="evasion" min="0" max="100" value="${rarityValues[rarity]}" step="0.01"></td>
-      <td><input type="number" class="count" min="1" value="${count}"></td>
-      <td><button class="remove ghost">Remove</button></td>
-    `;
-    rows.appendChild(tr);
-
-    tr.querySelector(".remove").addEventListener("click", ()=>tr.remove());
-    tr.querySelector(".rarity").addEventListener("change", e=>{
-      tr.querySelector(".evasion").value = rarityValues[e.target.value];
-    });
-  }
-
-  createRow("Mythic",4);
-
-  addBtn.onclick = ()=>createRow();
-  exampleBtn.onclick = ()=>{
-    rows.innerHTML="";
-    createRow("Mythic",4);
-  };
-  clearBtn.onclick = ()=>{
-    rows.innerHTML="";
-    output.style.display="none";
-  };
-
-  calcBtn.onclick = ()=>{
-    const data = Array.from(rows.querySelectorAll("tr")).map(r=>{
-      return {
-        rarity: r.querySelector(".rarity").value,
-        ev: parseFloat(r.querySelector(".evasion").value)/100,
-        count: parseInt(r.querySelector(".count").value)
-      };
-    }).filter(x=>x.count>0);
-
-    if(!data.length) return alert("Add at least one talisman.");
-
-    let totalHitChance = 1;
-    const logs = [];
-
-    for(const t of data){
-      const indivEvasion = 1 - Math.pow(1 - t.ev, t.count);  // ← your formula
-      const indivHit = 1 - indivEvasion;
-      logs.push(`${t.rarity}: 1 - ((1 - ${t.ev.toFixed(4)}) ^ ${t.count}) = ${(indivEvasion*100).toFixed(3)}%`);
-      totalHitChance *= indivHit;
+    function renderTable(){
+      tableBody.innerHTML = '';
+      talismans.forEach((t,i)=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${i+1}</td><td>${escapeHtml(t.name)}</td><td>${t.pct}%</td><td>${toDec(t.pct).toFixed(6)}</td><td><button data-i="${i}" class="removeBtn">Remove</button></td>`;
+        tableBody.appendChild(tr);
+      });
+      document.querySelectorAll('.removeBtn').forEach(btn=>btn.addEventListener('click', e=>{
+        const i = Number(e.currentTarget.dataset.i);
+        talismans.splice(i,1);
+        renderTable();
+      }));
     }
 
-    const totalEvasion = 1 - totalHitChance;
+    function escapeHtml(s){ return s.replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;" }[c])); }
 
-    summary.innerHTML = `<strong>Total Evasion:</strong> ${(totalEvasion*100).toFixed(3)}%<br>
-                         <strong>Total Hit Chance:</strong> ${(totalHitChance*100).toFixed(3)}%`;
-    steps.textContent = logs.join("\n");
-    output.style.display="block";
-  };
-})();
-</script>
+    document.querySelectorAll('.rarity-btn').forEach(btn=>btn.addEventListener('click', e=>{
+      const pctVal = Number(e.currentTarget.dataset.pct);
+      talismans.push({name:`${e.currentTarget.textContent.trim()}`, pct: pctVal});
+      renderTable();
+    }));
+
+    document.getElementById('addCustom').addEventListener('click', ()=>{
+      const name = document.getElementById('customName').value.trim() || 'Custom';
+      const pctVal = Number(document.getElementById('customPct').value);
+      if (isNaN(pctVal)) { alert('Enter a numeric percent for custom talisman'); return; }
+      talismans.push({name, pct: pctVal});
+      document.getElementById('customName').value='';document.getElementById('customPct').value='';
+      renderTable();
+    });
+
+    document.getElementById('clearList').addEventListener('click', ()=>{ talismans=[]; renderTable(); document.getElementById('listResult').innerHTML='';});
+
+    document.getElementById('calcList').addEventListener('click', ()=>{
+      if (talismans.length===0) { document.getElementById('listResult').innerHTML = '<span class="muted">No talismans in the list.</span>'; return; }
+      let prod = 1;
+      talismans.forEach(t=>{ prod *= (1 - toDec(t.pct)); });
+      const total = 1 - prod;
+      document.getElementById('listResult').innerHTML = `Stacked evasion: <strong>${pct(total)}</strong> — based on ${talismans.length} talisman(s).`;
+    });
+  </script>
 </body>
 </html>
