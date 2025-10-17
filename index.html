@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Talisman Evasion Calculator</title>
+<style>
+  :root{font-family:system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial;line-height:1.4}
+  body{background:#f6f8fb;color:#0b1220;padding:28px;display:flex;justify-content:center}
+  .card{background:#fff;border-radius:12px;box-shadow:0 8px 30px rgba(11,18,32,0.08);max-width:920px;width:100%;padding:20px}
+  h1{margin:0 0 8px;font-size:20px}
+  p.lead{margin:0 0 18px;color:#475569}
+  table{width:100%;border-collapse:collapse;margin-bottom:10px}
+  th,td{padding:8px 10px;text-align:left}
+  th{font-size:13px;color:#334155}
+  input[type="number"], input[type="text"]{width:100%;box-sizing:border-box;padding:8px;border:1px solid #e6e9ef;border-radius:8px;}
+  .row-actions{display:flex;gap:8px}
+  button{cursor:pointer;border:0;padding:8px 10px;border-radius:8px;background:#0ea5a4;color:white}
+  button.ghost{background:#eef2ff;color:#3730a3}
+  button.danger{background:#ef4444}
+  .results{background:#f8fafc;border-radius:8px;padding:12px;margin-top:12px;border:1px dashed #e6eef6}
+  pre{background:#0b1220;color:#e6eef6;padding:12px;border-radius:8px;overflow:auto}
+  .foot{margin-top:12px;color:#64748b;font-size:13px}
+  .small{font-size:13px;color:#475569}
+  .inline{display:inline-block;vertical-align:middle}
+  @media (max-width:640px){body{padding:12px}.card{padding:14px}}
+</style>
+</head>
+<body>
+  <main class="card" role="main" aria-labelledby="title">
+    <h1 id="title">Talisman Evasion Stack Calculator</h1>
+    <p class="lead">Enter talisman evasion% and quantity. The calculator multiplies the *fail* chance (100% - evasion%) for each talisman, then converts it back to total evasion%. Example: Mythic 18% (fail 82%) ×4 => final evasion ≈ 55%.</p>
+
+    <table aria-label="talisman table">
+      <thead>
+        <tr>
+          <th style="width:38%;">Talisman name</th>
+          <th style="width:22%;">Evasion % (per talisman)</th>
+          <th style="width:18%;">Quantity</th>
+          <th style="width:22%;">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="rows">
+        <!-- rows inserted by JS -->
+      </tbody>
+    </table>
+
+    <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+      <button id="addRow">➕ Add talisman</button>
+      <button id="useExample" class="ghost">Use example (Mythic 18% ×4)</button>
+      <button id="clearAll" class="danger">Clear all</button>
+      <div style="margin-left:auto" class="small inline">Precision:
+        <select id="precision" style="margin-left:8px;padding:6px;border-radius:6px;border:1px solid #e6e9ef">
+          <option value="2">2 dp</option>
+          <option value="3" selected>3 dp</option>
+          <option value="4">4 dp</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button id="calculate">Calculate</button>
+      <button id="copyResult" class="ghost">Copy results</button>
+    </div>
+
+    <div id="output" class="results" aria-live="polite" style="display:none">
+      <div id="summary"></div>
+      <pre id="steps" style="margin-top:10px"></pre>
+    </div>
+
+    <p class="foot">How it works (short): For each talisman with evasion E% → fail = (1 - E/100). Multiply fail-chances for every talisman instance → final hit chance = product(fail). Final evasion% = (1 - final hit chance) × 100.</p>
+  </main>
+
+<script>
+(() => {
+  const rowsEl = document.getElementById('rows');
+  const addRowBtn = document.getElementById('addRow');
+  const calculateBtn = document.getElementById('calculate');
+  const useExampleBtn = document.getElementById('useExample');
+  const clearAllBtn = document.getElementById('clearAll');
+  const output = document.getElementById('output');
+  const summary = document.getElementById('summary');
+  const steps = document.getElementById('steps');
+  const precisionSelect = document.getElementById('precision');
+  const copyBtn = document.getElementById('copyResult');
+
+  function createRow(name = '', evasion = 0, qty = 1) {
+    const tr = document.createElement('tr');
+
+    tr.innerHTML = `
+      <td><input type="text" class="tname" value="${escapeHtml(name)}" placeholder="Mythic Talisman"></td>
+      <td><input type="number" class="tevasion" value="${evasion}" min="0" max="100" step="0.01" aria-label="evasion percentage"></td>
+      <td><input type="number" class="tqty" value="${qty}" min="0" step="1" aria-label="quantity"></td>
+      <td class="row-actions">
+        <button class="remove ghost" title="Remove row">Remove</button>
+      </td>
+    `;
+
+    rowsEl.appendChild(tr);
+
+    tr.querySelector('.remove').addEventListener('click', () => {
+      tr.remove();
+    });
+
+    // Enter key triggers calculate when focused on an input
+    tr.querySelectorAll('input').forEach(inp => {
+      inp.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') calculate();
+      });
+    });
+
+    return tr;
+  }
+
+  function escapeHtml(s){ return (s+'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  // sample initial row
+  createRow('Mythic Talisman', 18, 4);
+
+  addRowBtn.addEventListener('click', () => createRow('', 10, 1));
+  useExampleBtn.addEventListener('click', () => {
+    rowsEl.innerHTML = '';
+    createRow('Mythic Talisman', 18, 4);
+  });
+  clearAllBtn.addEventListener('click', () => {
+    rowsEl.innerHTML = '';
+    output.style.display = 'none';
+  });
+
+  calculateBtn.addEventListener('click', calculate);
+  copyBtn.addEventListener('click', copyResults);
+
+  function gatherInputs() {
+    const rows = Array.from(rowsEl.querySelectorAll('tr'));
+    const items = [];
+    for (const r of rows) {
+      const name = r.querySelector('.tname').value.trim() || 'Talisman';
+      const ev = parseFloat(r.querySelector('.tevasion').value);
+      const qty = Math.floor(parseFloat(r.querySelector('.tqty').value) || 0);
+      if (Number.isNaN(ev) || ev < 0 || ev > 100) {
+        throw new Error(`Evasion for "${name}" must be a number between 0 and 100.`);
+      }
+      if (!Number.isFinite(qty) || qty < 0) {
+        throw new Error(`Quantity for "${name}" must be 0 or greater.`);
+      }
+      if (qty === 0) continue; // skip zero qty
+      items.push({name, evasionPercent: ev, qty});
+    }
+    if (items.length === 0) throw new Error('No talismans with quantity > 0 found.');
+    return items;
+  }
+
+  function calculate() {
+    try {
+      const items = gatherInputs();
+      const prec = parseInt(precisionSelect.value, 10);
+
+      // We'll compute the product of fail-chances.
+      // fail = 1 - evasion%/100
+      let productFail = 1.0;
+      const stepParts = [];
+      for (const it of items) {
+        const perFail = 1 - (it.evasionPercent / 100);
+        // multiply perFail ^ qty
+        const contribution = Math.pow(perFail, it.qty);
+        // track the multiplication step (rounded display)
+        stepParts.push(`${it.name} (e=${it.evasionPercent}% ) → fail=${formatNumber(perFail, prec)} ^ ${it.qty} = ${formatNumber(contribution, prec)}`);
+        productFail *= contribution;
+      }
+
+      const finalHitChance = productFail; // chance attack hits = product of fail-chances
+      const finalEvasion = 1 - finalHitChance;
+
+      // Build step-by-step multiplication string using full precision for correctness,
+      // but show rounded values in the visible steps.
+      const multiplyExpression = items.map(it => {
+        const perFail = 1 - (it.evasionPercent / 100);
+        return `(${formatNumber(perFail, 8)})^${it.qty}`;
+      }).join(' × ');
+
+      // Prepare output text
+      const lines = [];
+      lines.push('Multiplication expression (high precision):');
+      lines.push(multiplyExpression);
+      lines.push('');
+      lines.push('Step contributions (rounded):');
+      for (const p of stepParts) lines.push(' - ' + p);
+      lines.push('');
+      lines.push(`Final hit chance (attack hits you) = product = ${formatNumber(finalHitChance, prec)}`);
+      lines.push(`Final evasion chance = 1 - final hit chance = ${formatNumber(finalEvasion * 100, prec)}%`);
+      lines.push('');
+      lines.push('Notes: Each talisman reduces the hit by multiplying the chance the attack still hits (fail).');
+      
+      summary.innerHTML = `<strong>Result:</strong> Final evasion = <strong>${formatNumber(finalEvasion * 100, prec)}%</strong> — Final hit chance = <strong>${formatNumber(finalHitChance * 100, prec)}%</strong>.`;
+      steps.textContent = lines.join('\\n');
+
+      output.style.display = 'block';
+    } catch (err) {
+      output.style.display = 'block';
+      summary.innerHTML = `<strong style="color:#b91c1c">Error:</strong> ${escapeHtml(err.message)}`;
+      steps.textContent = '';
+    }
+  }
+
+  function formatNumber(n, dp){
+    // ensure a numeric value; show as decimal fraction when value <= 1 else show %-style numbers
+    if (!Number.isFinite(n)) return String(n);
+    return Number(n).toLocaleString(undefined, {maximumFractionDigits: dp, minimumFractionDigits: Math.min(0, dp)});
+  }
+
+  function copyResults() {
+    if (output.style.display === 'none') { alert('No results to copy. Run Calculate first.'); return; }
+    const text = summary.innerText + '\\n\\n' + steps.innerText;
+    navigator.clipboard?.writeText(text).then(() => {
+      copyBtn.textContent = 'Copied ✓';
+      setTimeout(() => copyBtn.textContent = 'Copy results', 1200);
+    }).catch(() => {
+      prompt('Copy this text manually:', text);
+    });
+  }
+
+  // allow adding with dblclick on table header area
+  rowsEl.addEventListener('dblclick', () => createRow('', 10, 1));
+
+  // allow ctrl/cmd+enter to calculate anywhere
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      calculate();
+    }
+  });
+
+})();
+</script>
+</body>
+</html>
