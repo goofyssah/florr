@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Talisman Evasion Calculator</title>
+  <title>Talisman Evasion Calculator + Crafting</title>
   <style>
     :root{--bg:#0f1724;--card:#0b1220;--muted:#94a3b8;--accent:#7c3aed}
     body{font-family:Inter,ui-sans-serif,system-ui,Arial;background:linear-gradient(180deg,#071023 0%, #081126 100%);color:#e6eef8;margin:0;padding:28px;}
@@ -20,55 +20,88 @@
     .right{margin-left:auto}
     input[type=number], input[type=text]{background:#071226;border:1px solid rgba(255,255,255,0.03);color:inherit;padding:8px 10px;border-radius:8px;min-width:120px}
     button{background:var(--accent);border:0;padding:8px 12px;border-radius:9px;color:white;cursor:pointer}
+    hr{margin:20px 0;border:none;border-top:1px solid rgba(255,255,255,0.05)}
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="card">
       <h1>Talisman Evasion Calculator</h1>
-      <p class="lead">Add talismans of different rarities to calculate total stacked evasion. Percent values for rarities are included below.</p>
+      <p class="lead">Add talismans of different rarities to calculate total stacked evasion, and simulate crafting upgrades.</p>
 
-      <div>
-        <div class="small muted">Click a rarity to add one talisman of that rarity to your list.</div>
-        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
-          <button class="rarity-btn" data-pct="3">Common +3%</button>
-          <button class="rarity-btn" data-pct="6">Unusual +6%</button>
-          <button class="rarity-btn" data-pct="9">Rare +9%</button>
-          <button class="rarity-btn" data-pct="12">Epic +12%</button>
-          <button class="rarity-btn" data-pct="15">Legendary +15%</button>
-          <button class="rarity-btn" data-pct="18">Mythic +18%</button>
-          <button class="rarity-btn" data-pct="21">Ultra +21%</button>
-          <button class="rarity-btn" data-pct="24">Super +24%</button>
-          <button class="rarity-btn" data-pct="27">Unique +27%</button>
-        </div>
-
-        <div style="margin-top:12px">
-          <div style="display:flex;align-items:center;gap:8px">
-            <label class="small muted">Custom name:</label>
-            <input id="customName" type="text" placeholder="e.g. Crafted Talisman" />
-            <label class="small muted">Custom percent:</label>
-            <input id="customPct" type="number" min="0" max="100" step="0.01" placeholder="%" />
-            <button id="addCustom">Add</button>
-          </div>
-
-          <table id="talismanTable">
-            <thead><tr><th>#</th><th>Name</th><th>Percent</th><th>Decimal</th><th></th></tr></thead>
-            <tbody></tbody>
-          </table>
-
-          <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
-            <button id="calcList">Calculate stacked evasion</button>
-            <button id="clearList">Clear list</button>
-            <div class="right small muted">Uses formula: 1 - Π (1 - pᵢ)</div>
-          </div>
-
-          <div id="listResult" class="result"></div>
-        </div>
+      <h2 style="margin-top:0">Evasion Calculation</h2>
+      <div class="small muted">Click a rarity to add one talisman of that rarity to your list.</div>
+      <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="rarity-btn" data-pct="3">Common +3%</button>
+        <button class="rarity-btn" data-pct="6">Unusual +6%</button>
+        <button class="rarity-btn" data-pct="9">Rare +9%</button>
+        <button class="rarity-btn" data-pct="12">Epic +12%</button>
+        <button class="rarity-btn" data-pct="15">Legendary +15%</button>
+        <button class="rarity-btn" data-pct="18">Mythic +18%</button>
+        <button class="rarity-btn" data-pct="21">Ultra +21%</button>
+        <button class="rarity-btn" data-pct="24">Super +24%</button>
+        <button class="rarity-btn" data-pct="27">Unique +27%</button>
       </div>
 
-      <hr style="margin:14px 0;border:none;border-top:1px solid rgba(255,255,255,0.02)" />
+      <div style="margin-top:12px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <label class="small muted">Custom name:</label>
+          <input id="customName" type="text" placeholder="e.g. Crafted Talisman" />
+          <label class="small muted">Custom percent:</label>
+          <input id="customPct" type="number" min="0" max="100" step="0.01" placeholder="%" />
+          <button id="addCustom">Add</button>
+        </div>
 
-      <div class="small muted">Formula: <code>1 - Π (1 - pᵢ)</code> where each <code>pᵢ</code> is the evasion chance of a talisman.</div>
+        <table id="talismanTable">
+          <thead><tr><th>#</th><th>Name</th><th>Percent</th><th>Decimal</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+
+        <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+          <button id="calcList">Calculate stacked evasion</button>
+          <button id="clearList">Clear list</button>
+          <div class="right small muted">Uses formula: 1 - Π (1 - pᵢ)</div>
+        </div>
+
+        <div id="listResult" class="result"></div>
+      </div>
+
+      <hr />
+
+      <h2>Crafting Simulator</h2>
+      <p class="small muted">Combine 5 petals of the same rarity to attempt crafting a higher rarity talisman. Each rarity has a specific success rate:</p>
+
+      <table>
+        <thead><tr><th>From → To</th><th>Chance</th></tr></thead>
+        <tbody>
+          <tr><td>Common → Unusual</td><td>64%</td></tr>
+          <tr><td>Unusual → Rare</td><td>32%</td></tr>
+          <tr><td>Rare → Epic</td><td>16%</td></tr>
+          <tr><td>Epic → Legendary</td><td>8%</td></tr>
+          <tr><td>Legendary → Mythic</td><td>4%</td></tr>
+          <tr><td>Mythic → Ultra</td><td>2%</td></tr>
+          <tr><td>Ultra → Super</td><td>1%</td></tr>
+        </tbody>
+      </table>
+
+      <div style="margin-top:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <label>Rarity to craft from:</label>
+        <select id="craftFrom">
+          <option value="Common">Common</option>
+          <option value="Unusual">Unusual</option>
+          <option value="Rare">Rare</option>
+          <option value="Epic">Epic</option>
+          <option value="Legendary">Legendary</option>
+          <option value="Mythic">Mythic</option>
+          <option value="Ultra">Ultra</option>
+        </select>
+        <button id="simulateCraft">Simulate Craft</button>
+      </div>
+
+      <div id="craftResult" class="result"></div>
+
+      <div class="small muted" style="margin-top:8px">Each craft consumes 5 of the current rarity and has the listed chance to succeed in upgrading one talisman.</div>
+
     </div>
   </div>
 
@@ -118,6 +151,30 @@
       talismans.forEach(t=>{ prod *= (1 - toDec(t.pct)); });
       const total = 1 - prod;
       document.getElementById('listResult').innerHTML = `Stacked evasion: <strong>${pct(total)}</strong> — based on ${talismans.length} talisman(s).`;
+    });
+
+    // Crafting simulator logic
+    const craftingChances = {
+      'Common': {next: 'Unusual', chance: 0.64},
+      'Unusual': {next: 'Rare', chance: 0.32},
+      'Rare': {next: 'Epic', chance: 0.16},
+      'Epic': {next: 'Legendary', chance: 0.08},
+      'Legendary': {next: 'Mythic', chance: 0.04},
+      'Mythic': {next: 'Ultra', chance: 0.02},
+      'Ultra': {next: 'Super', chance: 0.01}
+    };
+
+    document.getElementById('simulateCraft').addEventListener('click', ()=>{
+      const rarity = document.getElementById('craftFrom').value;
+      const data = craftingChances[rarity];
+      if (!data) {
+        document.getElementById('craftResult').innerHTML = `<span class='muted'>Super is max rarity and cannot be upgraded.</span>`;
+        return;
+      }
+      const success = Math.random() < data.chance;
+      document.getElementById('craftResult').innerHTML = success
+        ? `<strong>Success!</strong> Your ${rarity} petals crafted into a ${data.next} talisman.`
+        : `<strong>Failed!</strong> Your ${rarity} petals failed to upgrade.`;
     });
   </script>
 </body>
